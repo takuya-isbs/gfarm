@@ -128,6 +128,8 @@ When you install Gfarm by `all.sh`, `regress.sh` and `failover.sh` are available
 
 ## For OAuth authentication
 
+For Docker-based `gfarm-http-gateway` checks, see [http-gateway/README.md](http-gateway/README.md).
+
     % cd jwt-server
     (To update images if necessary)% make build
     % docker compose up -d

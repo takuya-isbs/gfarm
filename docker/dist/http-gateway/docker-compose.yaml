@@ -1,0 +1,71 @@
+name: gfarm-http-gateway-docker-dist
+
+services:
+  gateway:
+    build:
+      context: ${GFARM_HTTP_GATEWAY_CONTEXT}
+      dockerfile: Dockerfile
+    image: gfarm-http-gateway-docker-dist
+    command: ["--host", "0.0.0.0", "--port", "8000", "--forwarded-allow-ips=*"]
+    environment:
+      GFARM_HTTP_CONFIG_FILE: /config/gfarm-http-gateway.conf
+      GFARM_HTTP_GFARM_CONFIG_FILE: /config/gfarm2.conf
+      GFARM_HTTP_REDIS_HOST: redis
+      GFARM_HTTP_REDIS_PASSWORD: ${GFARM_HTTP_REDIS_PASSWORD}
+    volumes:
+      - ../../../gfarm-http-gateway/server/gfarm-http-gateway-for-docker-dist.conf:/config/gfarm-http-gateway.conf:ro
+      - ../../../gfarm-http-gateway/server/gfarm2.conf-for-docker-dist:/config/gfarm2.conf:ro
+      - ./config/certs:/config/certs:ro
+    networks:
+      gfarm_net:
+        aliases:
+          - gfarm-http-gateway-http
+      proxy_net:
+      redis_net:
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7
+    command:
+      - redis-server
+      - --bind
+      - 0.0.0.0
+      - --requirepass
+      - ${GFARM_HTTP_REDIS_PASSWORD}
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    environment:
+      GFARM_HTTP_REDIS_PASSWORD: ${GFARM_HTTP_REDIS_PASSWORD}
+    networks:
+      - redis_net
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$GFARM_HTTP_REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  nginx:
+    image: nginx:stable
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../minica/gfarm-http-gateway-https:/etc/nginx/certs:ro
+    networks:
+      gfarm_net:
+        aliases:
+          - gfarm-http-gateway-https
+      proxy_net:
+    depends_on:
+      - gateway
+
+networks:
+  gfarm_net:
+    name: gfarm_net
+    external: true
+  proxy_net:
+    internal: true
+  redis_net:
+    internal: true

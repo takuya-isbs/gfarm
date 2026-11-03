@@ -1,5 +1,7 @@
 /minica/jwt-server/
 /minica/jwt-server2/
 /minica/keycloak/
+/minica/gfarm-http-gateway-https/
+/http-gateway/config/certs/
 /minica/minica-key.pem
 /minica/minica.pem
