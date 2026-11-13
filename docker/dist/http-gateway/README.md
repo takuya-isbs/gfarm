@@ -25,8 +25,8 @@ Start the Compose project with `make up`. It also runs `docker/dist/minica.sh` t
 
 | Check | Browser URL | Request path | Redirect URI pattern for both Keycloak fields |
 |---|---|---|---|
-| HTTP application | `http://gfarm-http-gateway-http:8000/` | Browser → Squid forward proxy (external browser only) → Gateway | `http://gfarm-http-gateway-http:8000/*` |
-| HTTPS with Nginx | `https://gfarm-http-gateway-https/` | Browser → Squid forward proxy (external browser only) → Nginx reverse proxy → Gateway | `https://gfarm-http-gateway-https/*` |
+| HTTP application | `http://gfarm-http-gateway-http:8000/` | Browser -> Squid forward proxy (external browser only) -> Gateway | `http://gfarm-http-gateway-http:8000/*` |
+| HTTPS with Nginx | `https://gfarm-http-gateway-https/` | Browser -> Squid forward proxy (external browser only) -> Nginx reverse proxy -> Gateway | `https://gfarm-http-gateway-https/*` |
 
 Squid is the forward proxy for browsers outside the Docker environment; configure the browser to use the Docker host's port 13128. It forwards each request to the host and port in the browser URL. Nginx is a reverse proxy only in the HTTPS Compose setup: it terminates TLS and forwards requests to the Gateway container.
 
@@ -38,7 +38,37 @@ Squid is the forward proxy for browsers outside the Docker environment; configur
 | `make ps` | Show service status |
 | `make logs` | Show the last 100 log lines |
 | `make follow` | Follow service logs |
+| `GFARM_HTTP_TEST_PASSWORD=... make test` | Run the integration test against the real Gfarm services |
 | `make down` | Stop and remove the Compose services |
+
+`make test` runs against the already-running Compose Gateway and the `docker/dist` Gfarm, Keycloak, and JWT Server services. It does not recreate them.
+
+| Variable | Purpose | Defined in |
+|---|---|---|
+| `GFARM_HTTP_TEST_PASSWORD` | Keycloak `user1` password (required). Not kept in this README; see [For OAuth authentication](../README.md#for-oauth-authentication) and `../init-jwt.sh`. | Environment only |
+| `DOCKER_DIST_USER` | c1 user that runs `jwt-agent` (same as the `login` target) | `Makefile` |
+| `DOCKER_DIST_CLIENT` | Container that runs the Gfarm client and `jwt-agent` | `Makefile` |
+| `GFARM_HTTP_GATEWAY_DIR` | Path to the `gfarm-http-gateway` checkout | `Makefile` |
+| `GFARM_HTTP_TEST_USERNAME` | Expected Gfarm username | Test script |
+| `GFARM_HTTP_GATEWAY_URL` | Gateway under test | Test script |
+| `DOCKER_DIST_NETWORK` | Docker network for the Playwright containers | Test script |
+| `JWT_SERVER_URL` | JWT Server login page and `jwt-agent` server URL | Test script |
+| `PLAYWRIGHT_DOCKER_IMAGE` | Playwright container image; must match `@playwright/test` in `package-lock.json` | Test script |
+
+Defaults are not repeated here. Change them in the `Makefile` or at the top of `server/bin/test-http-gateway-docker-dist.sh` in the `gfarm-http-gateway` checkout. Environment variables override both.
+
+Side effects on the c1 account:
+
+- `jwt-agent` is stopped and restarted.
+- The previous JWT is invalidated, so other sessions using it stop working.
+
+Prerequisites:
+
+- `make up` and `make setup` have completed.
+- `gfarm-c1` has `go` and can download Go modules.
+- `npm ci` has been run in `server/frontend/app/react-app` of the `gfarm-http-gateway` checkout.
+
+Steps: obtain a JWT through the JWT Server login (Playwright) -> start `jwt-agent` -> `gfarm-http whoami` -> CLI upload -> Web UI login, check, and upload (Playwright) -> CLI download and byte comparison. Test files go to a unique Gfarm `/tmp` directory and are removed on exit. Test code: `gfarm-http-gateway/server/`.
 
 ## Run the source development server on c2
 
@@ -95,7 +125,7 @@ Use this setup to develop against the checkout on c2 with automatic source reloa
 
 | Check | Browser URL | Request path | Redirect URI pattern for both Keycloak fields |
 |---|---|---|---|
-| c2 development server | `http://c2:8000/` | Browser → Squid forward proxy (external browser only) → Gateway on c2:8000 | `http://c2:8000/*` |
+| c2 development server | `http://c2:8000/` | Browser -> Squid forward proxy (external browser only) -> Gateway on c2:8000 | `http://c2:8000/*` |
 
 ## Common procedures
 
@@ -109,7 +139,7 @@ For a browser outside the Docker environment, configure its HTTP proxy by follow
 2. Select the **HPCI** realm, open **Clients**, and edit **`hpci-pub`**.
 3. For each gateway URL above that you plan to use, copy its Redirect URI pattern into both **Valid Redirect URIs** and **Valid Post Logout Redirect URIs**.
 4. Save the client settings.
-5. Open the corresponding URL in a browser, click **Login**, then sign in as `user1 / PASSWORD` when redirected to Keycloak. The landing page includes API usage examples.
+5. Open the corresponding URL in a browser, click **Login**, then sign in as `user1` with the password described in [For OAuth authentication](../README.md#for-oauth-authentication) when redirected to Keycloak. The landing page includes API usage examples.
 
 The login flow is the same for the Compose Gateway and the c2 development server; use the URL and matching Redirect URI pattern from the corresponding section. The `/*` suffix permits paths below that host and port, including the login callback and `/logout`. These wildcard entries are for this isolated `docker/dist` test setup. For production, register the specific public callback and post-logout URIs instead of broad wildcard patterns.
 

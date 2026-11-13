@@ -1,6 +1,9 @@
 COMPOSE = docker compose --env-file .env -f docker-compose.yaml
+DOCKER_DIST_USER ?= $(USER)
+GFARM_HTTP_GATEWAY_DIR ?= ../../../gfarm-http-gateway
+DOCKER_DIST_CLIENT ?= gfarm-c1
 
-.PHONY: help setup up ps logs follow down
+.PHONY: help setup up ps logs follow test down
 
 help:
 	@echo "make setup  - replace Gfarm CA certs from gfarm-c1"
@@ -8,6 +11,7 @@ help:
 	@echo "make ps     - show the running services"
 	@echo "make logs   - show recent service logs"
 	@echo "make follow - follow service logs"
+	@echo "make test   - run the gfarm-http-gateway integration test"
 	@echo "make down   - stop the stack"
 
 setup:
@@ -19,7 +23,7 @@ setup:
 	fi
 	rm -rf config/certs
 	mkdir -p config/certs
-	docker cp gfarm-c1:/etc/grid-security/certificates/. config/certs/
+	docker cp $(DOCKER_DIST_CLIENT):/etc/grid-security/certificates/. config/certs/
 
 up:
 	cd .. && sh ./minica.sh
@@ -33,6 +37,9 @@ logs:
 
 follow:
 	$(COMPOSE) logs -f
+
+test:
+	DOCKER_DIST_USER="$(DOCKER_DIST_USER)" DOCKER_DIST_CLIENT="$(DOCKER_DIST_CLIENT)" "$(GFARM_HTTP_GATEWAY_DIR)/server/bin/test-http-gateway-docker-dist.sh"
 
 down:
 	$(COMPOSE) down
