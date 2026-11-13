@@ -68,7 +68,9 @@ Prerequisites:
 - `gfarm-c1` has `go` and can download Go modules.
 - `npm ci` has been run in `server/frontend/app/react-app` of the `gfarm-http-gateway` checkout.
 
-Steps: obtain a JWT through the JWT Server login (Playwright) -> start `jwt-agent` -> `gfarm-http whoami` -> CLI upload -> Web UI login, check, and upload (Playwright) -> CLI download and byte comparison. Test files go to a unique Gfarm `/tmp` directory and are removed on exit. Test code: `gfarm-http-gateway/server/`.
+Steps: obtain a fresh JWT through the JWT Server login (Playwright) -> restart `jwt-agent` -> run `make test`.
+
+The test covers Gfarm operations through the CLI and Web UI, including file and ZIP downloads. It uses a unique Gfarm `/tmp` directory and removes it on exit. See `gfarm-http-gateway/server/bin/test-http-gateway-docker-dist.sh` for setup and orchestration, and `client/test/gfarm-http-test.sh` and `server/frontend/app/react-app/tests/docker-dist.operations.spec.js` for test details.
 
 ## Run the source development server on c2
 
