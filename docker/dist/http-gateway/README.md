@@ -39,9 +39,19 @@ Squid is the forward proxy for browsers outside the Docker environment; configur
 | `make logs` | Show the last 100 log lines |
 | `make follow` | Follow service logs |
 | `GFARM_HTTP_TEST_PASSWORD=... make test` | Run the integration test against the real Gfarm services |
+| `make list-webui-cases` | List Playwright test titles without Docker, Gfarm services, or a password |
+| `GFARM_HTTP_TEST_PASSWORD=... make test-webui GFARM_HTTP_WEBUI_CASE='...'` | Run one Playwright test selected by its exact title |
+| `make clean-test-cache` | Remove the cached Playwright `node_modules` |
 | `make down` | Stop and remove the Compose services |
 
 `make test` runs against the already-running Compose Gateway and the `docker/dist` Gfarm, Keycloak, and JWT Server services. It does not recreate them.
+
+To run one case, copy its exact title from `make list-webui-cases`:
+
+```sh
+GFARM_HTTP_TEST_PASSWORD=... make test-webui \
+  GFARM_HTTP_WEBUI_CASE='GET /file/{path}: download a Gfarm file'
+```
 
 | Variable | Purpose | Defined in |
 |---|---|---|
@@ -49,28 +59,39 @@ Squid is the forward proxy for browsers outside the Docker environment; configur
 | `DOCKER_DIST_USER` | c1 user that runs `jwt-agent` (same as the `login` target) | `Makefile` |
 | `DOCKER_DIST_CLIENT` | Container that runs the Gfarm client and `jwt-agent` | `Makefile` |
 | `GFARM_HTTP_GATEWAY_DIR` | Path to the `gfarm-http-gateway` checkout | `Makefile` |
+| `GFARM_HTTP_PLAYWRIGHT_CACHE_HOME` | Host cache home; the runner uses its `gfarm-http-gateway/playwright` subdirectory. Defaults to `$XDG_CACHE_HOME` or `$HOME/.cache` | `Makefile` and test script |
 | `GFARM_HTTP_TEST_USERNAME` | Expected Gfarm username | Test script |
 | `GFARM_HTTP_GATEWAY_URL` | Gateway under test | Test script |
+| `GFARM_HTTP_WEBUI_CASE` | Exact Playwright title selected by `make test-webui` | Make command line |
 | `DOCKER_DIST_NETWORK` | Docker network for the Playwright containers | Test script |
 | `JWT_SERVER_URL` | JWT Server login page and `jwt-agent` server URL | Test script |
 | `PLAYWRIGHT_DOCKER_IMAGE` | Playwright container image; must match `@playwright/test` in `package-lock.json` | Test script |
 
 Defaults are not repeated here. Change them in the `Makefile` or at the top of `server/bin/test-http-gateway-docker-dist.sh` in the `gfarm-http-gateway` checkout. Environment variables override both.
 
-Side effects on the c1 account:
+Authentication effects on the c1 account:
 
-- `jwt-agent` is stopped and restarted.
-- The previous JWT is invalidated, so other sessions using it stop working.
+- `make test` stops and restarts `jwt-agent` with a fresh JWT.
+- `make test-webui` reuses a valid active JWT. If it is missing or expired, the test obtains a fresh JWT, stops and restarts `jwt-agent`, and invalidates the previous JWT.
 
 Prerequisites:
 
 - `make up` and `make setup` have completed.
 - `gfarm-c1` has `go` and can download Go modules.
-- `npm ci` has been run in `server/frontend/app/react-app` of the `gfarm-http-gateway` checkout.
+- Docker can run the Playwright image and reach npm when the dependency cache is first created or needs updating.
 
-Steps: obtain a fresh JWT through the JWT Server login (Playwright) -> restart `jwt-agent` -> run `make test`.
+Steps for `make test`: obtain a fresh JWT through the JWT Server login (Playwright) -> restart `jwt-agent` -> run the CLI and Web UI suites.
 
-The test covers Gfarm operations through the CLI and Web UI, including file and ZIP downloads. It uses a unique Gfarm `/tmp` directory and removes it on exit. See `gfarm-http-gateway/server/bin/test-http-gateway-docker-dist.sh` for setup and orchestration, and `client/test/gfarm-http-test.sh` and `server/frontend/app/react-app/tests/docker-dist.operations.spec.js` for test details.
+For a single Web UI case, run `make list-webui-cases`, then pass one exact title as `GFARM_HTTP_WEBUI_CASE` to `make test-webui`. The runner rejects titles that match zero or multiple cases. It prepares only that case's fixture data and skips the CLI operation suite. A valid active `jwt-agent` credential is reused for fixture setup; the runner refreshes it only when needed. The Web UI login and the selected case still run against the configured real services.
+
+Test preparation:
+
+- React sources: Copied from the current checkout to a temporary directory for each run.
+- Dependencies: A per-user `node_modules` cache is shared by full and selected-case runs. `npm ci` runs when `package.json`, `package-lock.json`, or the Playwright image changes.
+- Cache cleanup: Old dependency versions remain until `make clean-test-cache` removes the cache.
+- CLI helper: Rebuilt for each invocation.
+
+Both test commands use a unique Gfarm `/tmp` directory and remove it on exit. See `gfarm-http-gateway/server/bin/test-http-gateway-docker-dist.sh` for setup and orchestration, and `client/test/gfarm-http-test.sh` and `server/frontend/app/react-app/tests/docker-dist.operations.spec.js` for case details.
 
 ## Run the source development server on c2
 
