@@ -2,7 +2,7 @@ CREATE USER 'replica'@'172.23.0.%' IDENTIFIED BY 'gfarm123';
 RESET MASTER;
 GRANT REPLICATION SLAVE ON *.* TO 'replica'@'172.23.0.%';
 CHANGE MASTER TO
-  MASTER_HOST = 'jwt-server-db',
+  MASTER_HOST = 'jwt-server-db-repl',
   MASTER_PORT = 3306,
   MASTER_USER = 'replica',
   MASTER_PASSWORD = 'gfarm123',

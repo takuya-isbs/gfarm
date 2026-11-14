@@ -109,6 +109,8 @@ services:
     networks:
       jwt-server-back-db:
       jwt-server-db-replication:
+        aliases:
+          - jwt-server-db-repl
   jwt-server2-front:
     image: gfarm-jwt-server:local
     hostname: jwt-server2-front
@@ -166,6 +168,8 @@ services:
     networks:
       jwt-server-back-db:
       jwt-server-db-replication:
+        aliases:
+          - jwt-server2-db-repl
   rdesktop:
     init: true
     build: rdesktop
