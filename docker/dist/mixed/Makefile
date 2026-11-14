@@ -5,5 +5,5 @@ login:
 		-w /home/${USER}/gfarm/docker/dist/mixed -it gfarm-c1 /bin/bash
 
 down:
-	(cd ../jwt-server; docker compose down)
+	$(MAKE) -C ../jwt-server down
 	docker compose down

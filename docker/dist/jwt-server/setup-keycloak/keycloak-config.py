@@ -19,6 +19,7 @@ class KeycloakConfig(msgspec.Struct):
     realm: str
     client_secret: str
     jwt_server_urls: list[str]
+    gateway_urls: list[str]
     verify_cert: bool
 
 
@@ -35,6 +36,7 @@ REALM_MASTER = config.realm_master
 REALM = config.realm
 CLIENT_SECRET = config.client_secret
 JWT_SERVER_URLS = config.jwt_server_urls
+GATEWAY_URLS = config.gateway_urls
 VERIFY_CERT = config.verify_cert
 
 # (Keycloak 25 or later): "basic" scope has "sub" and "auth_time" claims
@@ -346,7 +348,7 @@ client_public = {
     "clientId": "hpci-pub",
     "directAccessGrantsEnabled": True,
     "publicClient": True,
-    "redirectUris": ["http://localhost:8080/"],
+    "redirectUris": ["http://localhost:8080/"] + GATEWAY_URLS,
     "attributes": {
         "oauth2.device.authorization.grant.enabled": True,
         "client.offline.session.idle.timeout": 604800,

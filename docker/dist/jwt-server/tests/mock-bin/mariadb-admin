@@ -1,0 +1,13 @@
+#!/bin/sh
+
+case "${MARIADB_ADMIN_MODE:-ready}" in
+    ready)
+        exit 0
+        ;;
+    unavailable)
+        exit 1
+        ;;
+    *)
+        exit 2
+        ;;
+esac

@@ -130,13 +130,51 @@ When you install Gfarm by `all.sh`, `regress.sh` and `failover.sh` are available
 
 For Docker-based `gfarm-http-gateway` checks, see [http-gateway/README.md](http-gateway/README.md).
 
+View JWT Server and Keycloak access logs with `docker compose logs -f jwt-server-front jwt-server-back keycloak` from `docker/dist/jwt-server`.
+
+### Initialize both JWT Servers
+
+Before either initialization target, build the images from the current checkout:
+
     % cd jwt-server
-    (To update images if necessary)% make build
+    % make build
+
+Run once on first setup with empty database volumes:
+
+    # Run once for the initial setup with empty database volumes.
+    % make init
     % docker compose up -d
-    % make setup
     % cd ..
 
-View JWT Server and Keycloak access logs with `docker compose logs -f jwt-server-front jwt-server-back keycloak` from `docker/dist/jwt-server`.
+- `make init`: initializes both databases and Keycloak.
+- Keycloak client: registers the Compose Gateway HTTP and HTTPS redirect URIs from `setup-keycloak/keycloak-config.yaml`.
+- `make setup` is retired; batch tests initialize the JWT Server stack with `make init`.
+- Later startup: `docker compose up -d` starts all initialized services.
+
+### Initialize JWT Server 1 only
+
+Use this setup for GitHub Actions and environments that need only JWT Server 1:
+
+- First setup with an empty database volume: `make init-jwt-server1`
+- Start or restart: `docker compose up -d jwt-server-front`
+
+### Startup behavior
+
+- Readiness: each JWT Server backend waits for MariaDB and Keycloak on every start.
+- Keycloak not yet configured: the Keycloak OIDC discovery URL returns an error until `make init` creates the HPCI realm. A backend started before that exits after `JWT_SERVER_DEPENDENCY_WAIT_TIMEOUT_SECONDS`, so run `make init` before `docker compose up -d`.
+- Initialization containers: stop after setup; `make down` removes them with the Compose services.
+- Volume reset: top-level `make down` calls `docker/dist/jwt-server`'s `make down`, removing the JWT Server database and Keycloak volumes.
+
+Wait settings can be overridden with environment variables:
+
+| Variable | Default | Purpose |
+|---|---:|---|
+| `JWT_SERVER_DEPENDENCY_WAIT_INTERVAL_SECONDS` | `2` | Delay between Keycloak readiness checks |
+| `JWT_SERVER_DEPENDENCY_WAIT_TIMEOUT_SECONDS` | `300` | Maximum wait for dependencies |
+| `JWT_SERVER_OIDC_DISCOVERY_URL` | `https://keycloak:8443/auth/realms/HPCI/.well-known/openid-configuration` | Keycloak OIDC discovery URL |
+| `MYSQL_WAIT_INTERVAL_SECONDS` | `2` | Delay between MariaDB readiness checks |
+| `MYSQL_WAIT_TIMEOUT_SECONDS` | `300` | Maximum wait for MariaDB |
+| `MARIADB_ADMIN_CONNECT_TIMEOUT_SECONDS` | `2` | Per-check MariaDB connection timeout |
 
 - connect remote desktop to localhost:13389
 - login ubuntu/ubuntu
@@ -178,8 +216,8 @@ Passphrase: (paste the passphrase displayed)
 % sh ./minica.sh --update
 % cd jwt-server
 % docker compose down -v --remove-orphans
+% make init
 % docker compose up -d
-% make setup
 % cd ..
 ```
 
@@ -203,6 +241,8 @@ Build, install and setup tests for all distributions.
     % sh ./batchtest.sh [ regress | regress_full ]
 
 When regress or regress\_full option is specified this test includes regression tests.  For all authentications, use regress\_full not regress.  The log files of regression tests are stored in gfarm/build/regress.
+
+The `batchtest.sh` scripts run `make down` before and after testing. This removes the JWT Server database and Keycloak volumes; each run initializes them again with `make init`.
 
 `batchtest.sh` accepts the following options.
 

@@ -154,15 +154,14 @@ Use this setup to develop against the checkout on c2 with automatic source reloa
 
 ### Configure authentication and access the Web UI
 
-Register the browser-facing URL for each gateway you plan to use in the Keycloak client. The login callback uses the Gateway's `/` endpoint by default. After OIDC logout, the identity provider returns the browser to the Gateway's `/logout` endpoint; the Gateway adds a changing `state` query parameter and then clears its local session.
+The Compose Gateway HTTP and HTTPS redirect patterns are applied to the `hpci-pub` client by `make init`; their values are in `docker/dist/jwt-server/setup-keycloak/keycloak-config.yaml`. The login callback uses the Gateway's `/` endpoint by default. After OIDC logout, the identity provider returns the browser to the Gateway's `/logout` endpoint; the Gateway adds a changing `state` query parameter and then clears its local session.
 
 For a browser outside the Docker environment, configure its HTTP proxy by following [Use http proxy instead of remote desktop](../README.md#use-http-proxy-instead-of-remote-desktop). A browser in the remote desktop environment does not need this proxy setting.
 
-1. Open the Keycloak admin console at `https://keycloak:8443/auth/admin/master/console/#/HPCI/` and log in (`admin/admin` in the docker/dist example).
+1. For a non-Compose URL such as c2, open the Keycloak admin console at `https://keycloak:8443/auth/admin/master/console/#/HPCI/` and log in (`admin/admin` in the docker/dist example).
 2. Select the **HPCI** realm, open **Clients**, and edit **`hpci-pub`**.
-3. For each gateway URL above that you plan to use, copy its Redirect URI pattern into both **Valid Redirect URIs** and **Valid Post Logout Redirect URIs**.
-4. Save the client settings.
-5. Open the corresponding URL in a browser, click **Login**, then sign in as `user1` with the password described in [For OAuth authentication](../README.md#for-oauth-authentication) when redirected to Keycloak. The landing page includes API usage examples.
+3. Add the URL's Redirect URI pattern to both **Valid Redirect URIs** and **Valid Post Logout Redirect URIs**, then save.
+4. Open the corresponding URL in a browser, click **Login**, then sign in as `user1` with the password described in [For OAuth authentication](../README.md#for-oauth-authentication) when redirected to Keycloak. The landing page includes API usage examples.
 
 The login flow is the same for the Compose Gateway and the c2 development server; use the URL and matching Redirect URI pattern from the corresponding section. The `/*` suffix permits paths below that host and port, including the login callback and `/logout`. These wildcard entries are for this isolated `docker/dist` test setup. For production, register the specific public callback and post-logout URIs instead of broad wildcard patterns.
 

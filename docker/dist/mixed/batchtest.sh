@@ -11,7 +11,7 @@ make down
 docker compose up -d
 
 # JWT-Server
-(cd ../jwt-server && docker compose up -d && make setup)
+(cd ../jwt-server && make init && docker compose up -d)
 
 # execute a script
 $DOCKEREXEC sh all.sh

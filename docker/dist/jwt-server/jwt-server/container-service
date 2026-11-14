@@ -1,6 +1,57 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+readonly dependency_wait_interval_seconds="${JWT_SERVER_DEPENDENCY_WAIT_INTERVAL_SECONDS:-2}"
+readonly dependency_wait_timeout_seconds="${JWT_SERVER_DEPENDENCY_WAIT_TIMEOUT_SECONDS:-300}"
+readonly keycloak_oidc_discovery_url="${JWT_SERVER_OIDC_DISCOVERY_URL:-https://keycloak:8443/auth/realms/HPCI/.well-known/openid-configuration}"
+
+wait_until() {
+    local description=$1
+    shift
+    local started_at=$SECONDS
+
+    printf '[WAIT] Waiting for %s...\n' "$description"
+    until "$@" >/dev/null 2>&1; do
+        if ((SECONDS - started_at >= dependency_wait_timeout_seconds)); then
+            printf '[ERROR] Timed out after %s seconds waiting for %s.\n' \
+                "$dependency_wait_timeout_seconds" "$description" >&2
+            return 1
+        fi
+        sleep "$dependency_wait_interval_seconds"
+    done
+    printf '[READY] %s is ready after %s seconds.\n' \
+        "$description" "$((SECONDS - started_at))"
+}
+
+wait_for_dependencies() {
+    local datasource_authority database_host
+    case "${SPRING_DATASOURCE_URL:?SPRING_DATASOURCE_URL must be set}" in
+        jdbc:mysql://*) ;;
+        *)
+            printf '[ERROR] SPRING_DATASOURCE_URL must use jdbc:mysql://.\n' >&2
+            return 2
+            ;;
+    esac
+    datasource_authority="${SPRING_DATASOURCE_URL#jdbc:mysql://}"
+    database_host="${datasource_authority%%:*}"
+
+    MARIADB_ADMIN_HOST="$database_host" \
+        MYSQL_WAIT_INTERVAL_SECONDS="$dependency_wait_interval_seconds" \
+        MYSQL_WAIT_TIMEOUT_SECONDS="$dependency_wait_timeout_seconds" \
+        /jwt/wait-for-mariadb.sh
+    wait_until "Keycloak OIDC discovery" \
+        wget --quiet --spider --timeout=2 --tries=1 \
+        "$keycloak_oidc_discovery_url"
+}
+
+stop_mariadb() {
+    if [[ -n "${mariadb_pid:-}" ]] && kill -0 "$mariadb_pid" 2>/dev/null; then
+        mariadb-admin shutdown >/dev/null 2>&1 || \
+            kill -TERM "$mariadb_pid" 2>/dev/null || true
+        wait "$mariadb_pid" 2>/dev/null || true
+    fi
+}
+
 case "${1:-}" in
     tomcat)
         update-ca-trust
@@ -8,6 +59,7 @@ case "${1:-}" in
             keytool -noprompt -import -cacerts -storepass changeit -alias minica \
                 -file /usr/share/pki/ca-trust-source/anchors/minica.crt
         fi
+        wait_for_dependencies
         : "${AJP_BIND_ADDRESS:?AJP_BIND_ADDRESS must be set}"
         sed -i "s/address=\"localhost\"/address=\"${AJP_BIND_ADDRESS}\"/" \
             /opt/tomcat/conf/server.xml
@@ -32,7 +84,37 @@ case "${1:-}" in
         ;;
     mariadb)
         /usr/libexec/mariadb-prepare-db-dir mariadb.service
-        exec /usr/libexec/mariadbd --basedir=/usr --user=mysql --skip-log-error
+        if [[ -n "${GFARM_JWT_SERVER_DB_INIT:-}" ]]; then
+            case "$GFARM_JWT_SERVER_DB_INIT" in
+                master1) setup_script=/jwt/setup_master1.sh ;;
+                master2) setup_script=/jwt/setup_master2.sh ;;
+                *)
+                    printf 'Unsupported GFARM_JWT_SERVER_DB_INIT value: %s\n' \
+                        "$GFARM_JWT_SERVER_DB_INIT" >&2
+                    exit 2
+                    ;;
+            esac
+
+            /usr/libexec/mariadbd --basedir=/usr --user=mysql --skip-log-error &
+            mariadb_pid=$!
+            trap stop_mariadb EXIT
+            trap 'exit 130' INT
+            trap 'exit 143' TERM
+
+            /jwt/wait-for-mariadb.sh
+            existing_database=$(mysql --batch --skip-column-names \
+                --execute="SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'gfarmdb'")
+            if [[ "$existing_database" == "gfarmdb" ]]; then
+                printf '[ERROR] gfarmdb already exists; make init requires an uninitialized database volume.\n' >&2
+                exit 1
+            fi
+            "$setup_script"
+            mariadb-admin shutdown
+            wait "$mariadb_pid"
+            trap - EXIT INT TERM
+        else
+            exec /usr/libexec/mariadbd --basedir=/usr --user=mysql --skip-log-error
+        fi
         ;;
     *)
         printf 'Usage: %s tomcat|apache|mariadb\n' "$0" >&2
