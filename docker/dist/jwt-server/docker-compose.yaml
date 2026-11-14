@@ -2,7 +2,7 @@ services:
   ### for Keycloak 20 or later
   keycloak:
     init: true
-    image: keycloak/keycloak:26.2
+    image: keycloak/keycloak:26.4
     hostname: keycloak
     container_name: gfarm-keycloak
     command:
@@ -32,6 +32,8 @@ services:
       - KC_HEALTH_ENABLED=true   # :443/auth/health
       - KC_METRICS_ENABLED=true  # :443/auth/metrics
       - KC_LOG_LEVEL=INFO
+      - KC_HTTP_ACCESS_LOG_ENABLED=true
+      - 'KC_HTTP_ACCESS_LOG_PATTERN=%h %t "%m %R %H" %s %b'
   setup-keycloak:
     build: setup-keycloak
     image: gfarm-setup-keycloak
@@ -42,26 +44,25 @@ services:
       - ./setup-keycloak:/setup-keycloak:ro
     networks:
       gfarm_net:
-  jwt-server:
-    build:
-      context: jwt-server
-      args:
-        MAVEN_OPTS: >-
-          -Dhttp.proxyHost=${PROXY_HOST:-}
-          -Dhttp.proxyPort=${PROXY_PORT:-}
-          -Dhttps.proxyHost=${PROXY_HOST:-}
-          -Dhttps.proxyPort=${PROXY_PORT:-}
-    hostname: jwt-server
-    container_name: gfarm-jwt-server
+  jwt-server-front:
+    image: gfarm-jwt-server:local
+    hostname: jwt-server-front
+    container_name: gfarm-jwt-server-front
+    command: ["apache"]
+    environment:
+      - JWT_BACKEND=jwt-server-back-ajp
     volumes:
-      - ../minica/minica.pem:/usr/share/pki/ca-trust-source/anchors/minica.crt
       - ../minica/jwt-server/cert.pem:/etc/pki/tls/certs/localhost.crt
       - ../minica/jwt-server/key.pem:/etc/pki/tls/private/localhost.key
-      - ./jwt-server:/jwt
+    depends_on:
+      jwt-server-back:
+        condition: service_started
     networks:
-      - gfarm_net
-    privileged: true
-  jwt-server2:
+      gfarm_net:
+        aliases:
+          - jwt-server
+      jwt-server-front-back:
+  jwt-server-back:
     build:
       context: jwt-server
       args:
@@ -70,16 +71,101 @@ services:
           -Dhttp.proxyPort=${PROXY_PORT:-}
           -Dhttps.proxyHost=${PROXY_HOST:-}
           -Dhttps.proxyPort=${PROXY_PORT:-}
-    hostname: jwt-server2
-    container_name: gfarm-jwt-server2
+    image: gfarm-jwt-server:local
+    hostname: jwt-server-back
+    container_name: gfarm-jwt-server-back
+    command: ["tomcat"]
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://jwt-server-db:3306/gfarmdb
+      - AJP_BIND_ADDRESS=172.21.0.10
     volumes:
       - ../minica/minica.pem:/usr/share/pki/ca-trust-source/anchors/minica.crt
+      - ./jwt-server:/jwt:ro
+    depends_on:
+      jwt-server-db:
+        condition: service_healthy
+    networks:
+      gfarm_net:
+      jwt-server-front-back:
+        ipv4_address: 172.21.0.10
+        aliases:
+          - jwt-server-back-ajp
+      jwt-server-back-db:
+        ipv4_address: 172.22.0.10
+  jwt-server-db:
+    image: gfarm-jwt-server:local
+    hostname: jwt-server-db
+    container_name: gfarm-jwt-server-db
+    command: ["mariadb"]
+    volumes:
+      - jwt-server-data:/var/lib/mysql
+      - ./jwt-server/cnf/master1.cnf:/etc/my.cnf.d/zz-master.cnf:ro
+      - ./jwt-server:/jwt:ro
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "--silent"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks:
+      jwt-server-back-db:
+      jwt-server-db-replication:
+  jwt-server2-front:
+    image: gfarm-jwt-server:local
+    hostname: jwt-server2-front
+    container_name: gfarm-jwt-server2-front
+    command: ["apache"]
+    environment:
+      - JWT_BACKEND=jwt-server2-back-ajp
+    volumes:
       - ../minica/jwt-server2/cert.pem:/etc/pki/tls/certs/localhost.crt
       - ../minica/jwt-server2/key.pem:/etc/pki/tls/private/localhost.key
-      - ./jwt-server:/jwt
+    depends_on:
+      jwt-server2-back:
+        condition: service_started
     networks:
-      - gfarm_net
-    privileged: true
+      gfarm_net:
+        aliases:
+          - jwt-server2
+      jwt-server-front-back:
+  jwt-server2-back:
+    image: gfarm-jwt-server:local
+    hostname: jwt-server2-back
+    container_name: gfarm-jwt-server2-back
+    command: ["tomcat"]
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://jwt-server2-db:3306/gfarmdb
+      - AJP_BIND_ADDRESS=172.21.0.11
+    volumes:
+      - ../minica/minica.pem:/usr/share/pki/ca-trust-source/anchors/minica.crt
+      - ./jwt-server:/jwt:ro
+    depends_on:
+      jwt-server2-db:
+        condition: service_healthy
+    networks:
+      gfarm_net:
+      jwt-server-front-back:
+        ipv4_address: 172.21.0.11
+        aliases:
+          - jwt-server2-back-ajp
+      jwt-server-back-db:
+        ipv4_address: 172.22.0.11
+  jwt-server2-db:
+    image: gfarm-jwt-server:local
+    hostname: jwt-server2-db
+    container_name: gfarm-jwt-server2-db
+    command: ["mariadb"]
+    volumes:
+      - jwt-server2-data:/var/lib/mysql
+      - ./jwt-server/cnf/master2.cnf:/etc/my.cnf.d/zz-master.cnf:ro
+      - ./jwt-server:/jwt:ro
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "--silent"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks:
+      jwt-server-back-db:
+      jwt-server-db-replication:
   rdesktop:
     init: true
     build: rdesktop
@@ -106,6 +192,23 @@ networks:
   gfarm_net:
     name: gfarm_net
     external: true
+  jwt-server-front-back:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+  jwt-server-back-db:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+  jwt-server-db-replication:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
 
 volumes:
   keycloak-data:
+  jwt-server-data:
+  jwt-server2-data:

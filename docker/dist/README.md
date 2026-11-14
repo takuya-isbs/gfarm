@@ -136,6 +136,8 @@ For Docker-based `gfarm-http-gateway` checks, see [http-gateway/README.md](http-
     % make setup
     % cd ..
 
+View JWT Server and Keycloak access logs with `docker compose logs -f jwt-server-front jwt-server-back keycloak` from `docker/dist/jwt-server`.
+
 - connect remote desktop to localhost:13389
 - login ubuntu/ubuntu
 - launch Firefox (or Chromium (/rdesktop/chromium-start.sh))

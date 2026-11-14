@@ -1,3 +1,3 @@
-CREATE USER 'gfarm'@'localhost' IDENTIFIED BY 'gfarm123';
-GRANT ALL PRIVILEGES ON *.* TO 'gfarm'@'localhost';
+CREATE USER 'gfarm'@'172.22.0.%' IDENTIFIED BY 'gfarm123';
 CREATE DATABASE gfarmdb;
+GRANT ALL PRIVILEGES ON gfarmdb.* TO 'gfarm'@'172.22.0.%';

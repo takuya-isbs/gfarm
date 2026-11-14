@@ -21,9 +21,8 @@ RUN useradd -s /sbin/nologin tomcat
 RUN chown -R tomcat: /opt/apache-tomcat-$TOMCAT_VER
 RUN sh -c 'chmod +x /opt/tomcat/bin/*.sh'
 
-COPY tomcat.service /etc/systemd/system
-
 COPY jwt-server.conf /etc/httpd/conf.d/
+COPY access-log.conf /etc/httpd/conf.d/zz-access-log.conf
 COPY server.xml /opt/tomcat/conf/
 RUN rm -rf /opt/tomcat/webapps/*
 
@@ -39,10 +38,10 @@ RUN cd jwt-server \
 
 COPY cnf/charset.cnf /etc/my.cnf.d/
 
-RUN systemctl enable httpd \
- && systemctl enable tomcat \
- && systemctl enable mariadb
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY container-service /usr/local/bin/container-service
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/container-service
 
-# shut down systemd cleanly by "docker stop"
-STOPSIGNAL SIGRTMIN+3
-CMD ["/sbin/init"]
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["tomcat"]

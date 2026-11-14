@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+case "${1:-}" in
+    tomcat)
+        update-ca-trust
+        if ! keytool -list -cacerts -storepass changeit -alias minica >/dev/null 2>&1; then
+            keytool -noprompt -import -cacerts -storepass changeit -alias minica \
+                -file /usr/share/pki/ca-trust-source/anchors/minica.crt
+        fi
+        : "${AJP_BIND_ADDRESS:?AJP_BIND_ADDRESS must be set}"
+        sed -i "s/address=\"localhost\"/address=\"${AJP_BIND_ADDRESS}\"/" \
+            /opt/tomcat/conf/server.xml
+        tail -F --retry /opt/tomcat/logs/jwt-server-access.log 2>/dev/null &
+        tail_pid=$!
+        runuser -u tomcat -- /opt/tomcat/bin/catalina.sh run &
+        tomcat_pid=$!
+        trap 'kill -TERM "$tomcat_pid" "$tail_pid" 2>/dev/null || true; wait "$tomcat_pid" 2>/dev/null || true; wait "$tail_pid" 2>/dev/null || true; exit 0' TERM INT
+        set +e
+        wait "$tomcat_pid"
+        status=$?
+        set -e
+        kill "$tail_pid" 2>/dev/null || true
+        wait "$tail_pid" 2>/dev/null || true
+        exit "$status"
+        ;;
+    apache)
+        : "${JWT_BACKEND:?JWT_BACKEND must name the Tomcat service}"
+        sed -i "s@ajp://localhost:8009@ajp://${JWT_BACKEND}:8009@g" \
+            /etc/httpd/conf.d/jwt-server.conf
+        exec /usr/sbin/httpd -DFOREGROUND
+        ;;
+    mariadb)
+        /usr/libexec/mariadb-prepare-db-dir mariadb.service
+        exec /usr/libexec/mariadbd --basedir=/usr --user=mysql --skip-log-error
+        ;;
+    *)
+        printf 'Usage: %s tomcat|apache|mariadb\n' "$0" >&2
+        exit 2
+        ;;
+esac
