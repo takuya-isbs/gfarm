@@ -28,14 +28,16 @@ setup: setup-keycloak setup-jwt-server
 setup-keycloak-old:
 	docker exec gfarm-keycloak /keycloak/setup.sh
 
-.PHONY: setup-keycloak
+.PHONY: setup-keycloak setup-jwt-server setup-jwt-server1
 setup-keycloak:
-	docker compose run --remove-orphans --rm -it setup-keycloak \
+	docker compose run --remove-orphans --rm setup-keycloak \
     python3 /setup-keycloak/keycloak-config.py /setup-keycloak/keycloak-config.yaml
 
-setup-jwt-server:
-	docker exec gfarm-jwt-server /jwt/setup_master1.sh
+setup-jwt-server: setup-jwt-server1
 	docker exec gfarm-jwt-server2 /jwt/setup_master2.sh
+
+setup-jwt-server1:
+	docker exec gfarm-jwt-server /jwt/setup_master1.sh
 
 up:
 	docker compose up -d
