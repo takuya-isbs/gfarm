@@ -35,6 +35,8 @@ Squid is the forward proxy for browsers outside the Docker environment; configur
 | Command | Action |
 |---|---|
 | `make up` | Build and start Gateway, Redis, and Nginx |
+| `make up-nobuild` | Start the same services without building; the Gateway image must already exist (GitHub Actions uses this after bake) |
+| `make -C .. bake-images` | Build all docker/dist images with bake from the gfarm root (manual check only; GitHub Actions does not call it) |
 | `make ps` | Show service status |
 | `make logs` | Show the last 100 log lines |
 | `make follow` | Follow service logs |
