@@ -3,6 +3,10 @@
 # Prepared for GitHub Actions (docker/bake-action). Local runs can build these images with
 # compose alone, so bake is optional for local use.
 #
+# Why not bake the compose files directly: they set build contexts relative to their own
+# directories, but bake resolves contexts from the working directory. The contexts here are
+# relative to the gfarm root, so one invocation builds all targets in parallel.
+#
 # Keep this file in sync with docker-compose.yaml and jwt-server/docker-compose.yaml: image
 # names (tags), build contexts, dockerfile paths, and build args must match the compose files.
 #

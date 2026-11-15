@@ -13,6 +13,8 @@
 # gfarm-http-gateway/server, the same context as GFARM_HTTP_GATEWAY_CONTEXT in .env.
 #
 # Target and group names are shared across merged files; do not reuse "gateway" in other files.
+#
+# Kept separate from docker-compose.yaml for the reason given in docker/dist/docker-bake.hcl.
 
 group "gateway" {
   targets = ["gateway"]
