@@ -15,7 +15,12 @@ services:
     volumes:
       - ../../../gfarm-http-gateway/server/gfarm-http-gateway-for-docker-dist.conf:/config/gfarm-http-gateway.conf:ro
       - ../../../gfarm-http-gateway/server/gfarm2.conf-for-docker-dist:/config/gfarm2.conf:ro
-      - ./config/certs:/config/certs:ro
+      - type: bind
+        source: ./config/certs
+        target: /config/certs
+        read_only: true
+        bind:
+          create_host_path: false
     networks:
       gfarm_net:
         aliases:

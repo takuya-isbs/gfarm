@@ -10,14 +10,14 @@ Use this setup to verify the built Gateway image and HTTP/HTTPS access. One Comp
 
 Run this directory's Compose Makefile commands on the Docker host, from this directory. The fixed `.env` settings and Redis password are for this isolated docker/dist test only. Redis is authenticated, private to the Compose network, and has no published host port. This Compose does not modify `jwt-server`.
 
-Compose mounts `config/certs/` read-only into the Gateway container. After creating or rebuilding the `docker/dist` Gfarm containers, refresh the local CA certificates from c1 before starting the Compose project:
+After `docker/dist/all.sh` has initialized Gfarm in c1, `make setup` copies its CA certificates to `config/certs/` for the Gateway. If this Compose project is running, stop it first with `make down`:
 
 ```sh
 make down
 make setup
 ```
 
-`make setup` refuses to run while containers from this Compose project exist, preventing changes to CA files mounted by a running stack. Then run `make up` below; it creates or recreates the Gateway container so the entrypoint copies the current CA files into its Gfarm trust directory.
+Then run `make up` to start the Gateway, which copies the certificates into its Gfarm trust directory.
 
 For HTTPS, trust `docker/dist/minica/minica.pem` in the browser. See the CA setup instructions in `docker/dist/README.md`.
 

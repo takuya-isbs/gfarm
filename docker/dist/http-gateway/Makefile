@@ -27,8 +27,12 @@ setup:
 		echo "Cannot run make setup while Compose containers exist; run 'make down' first." >&2; \
 		exit 1; \
 	fi
-	rm -rf config/certs
+	@docker exec "$(DOCKER_DIST_CLIENT)" test -d /etc/grid-security/certificates || { \
+		echo "Gfarm CA certificates are missing in $(DOCKER_DIST_CLIENT); complete docker/dist/all.sh first." >&2; \
+		exit 1; \
+	}
 	mkdir -p config/certs
+	find config/certs -mindepth 1 -maxdepth 1 ! -name .gitkeep -exec rm -rf -- {} +
 	docker cp $(DOCKER_DIST_CLIENT):/etc/grid-security/certificates/. config/certs/
 
 up:
