@@ -80,7 +80,7 @@ Prerequisites:
 - `gfarm-c1` has `go` and can download Go modules.
 - Docker can run the Playwright image and reach npm when the dependency cache is first created or needs updating.
 
-Steps for `make test`: obtain a fresh JWT through the JWT Server login (Playwright) -> restart `jwt-agent` -> run the CLI and Web UI suites.
+Steps for `make test`: obtain a fresh JWT through the JWT Server login (Playwright) -> restart `jwt-agent` -> map the c1 user to the Gfarm SASL user and enable XOAUTH2 -> run the CLI and Web UI suites.
 
 For a single Web UI case, run `make list-webui-cases`, then pass one exact title as `GFARM_HTTP_WEBUI_CASE` to `make test-webui`. The runner rejects titles that match zero or multiple cases. It prepares only that case's fixture data and skips the CLI operation suite. A valid active `jwt-agent` credential is reused for fixture setup; the runner refreshes it only when needed. The Web UI login and the selected case still run against the configured real services.
 
