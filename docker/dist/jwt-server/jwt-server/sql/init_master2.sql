@@ -1,6 +1,8 @@
-CREATE USER 'replica'@'172.23.0.%' IDENTIFIED BY 'gfarm123';
+-- Test environment: allow replication connections from any host. In production,
+-- keep the database on a private network and restrict this account to required hosts or subnets.
+CREATE USER 'replica'@'%' IDENTIFIED BY 'gfarm123';
 RESET MASTER;
-GRANT REPLICATION SLAVE ON *.* TO 'replica'@'172.23.0.%';
+GRANT REPLICATION SLAVE ON *.* TO 'replica'@'%';
 CHANGE MASTER TO
   MASTER_HOST = 'jwt-server-db-repl',
   MASTER_PORT = 3306,

@@ -49,14 +49,15 @@ test-init:
 
 init: INIT_DATABASE_SERVICES = jwt-server-db jwt-server2-db
 init: check-init-db-services
-	docker compose run --name "gfarm-jwt-server-db-init-$$(date +%s)-$$$$" --no-deps -e GFARM_JWT_SERVER_DB_INIT=master1 jwt-server-db
-	docker compose run --name "gfarm-jwt-server2-db-init-$$(date +%s)-$$$$" --no-deps -e GFARM_JWT_SERVER_DB_INIT=master2 jwt-server2-db
+	docker compose build	# use cache
+	docker compose run --rm --name "gfarm-jwt-server-db-init-$$(date +%s)-$$$$" --no-deps -e GFARM_JWT_SERVER_DB_INIT=master1 jwt-server-db
+	docker compose run --rm --name "gfarm-jwt-server2-db-init-$$(date +%s)-$$$$" --no-deps -e GFARM_JWT_SERVER_DB_INIT=master2 jwt-server2-db
 	docker compose up -d keycloak
 	$(MAKE) setup-keycloak
 
 init-jwt-server1: INIT_DATABASE_SERVICES = jwt-server-db
 init-jwt-server1: check-init-db-services
-	docker compose run --name "gfarm-jwt-server-db-init-$$(date +%s)-$$$$" --no-deps -e GFARM_JWT_SERVER_DB_INIT=master1 jwt-server-db
+	docker compose run --rm --name "gfarm-jwt-server-db-init-$$(date +%s)-$$$$" --no-deps -e GFARM_JWT_SERVER_DB_INIT=master1 jwt-server-db
 	docker compose up -d keycloak
 	$(MAKE) setup-keycloak
 

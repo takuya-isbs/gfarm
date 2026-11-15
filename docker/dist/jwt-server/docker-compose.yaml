@@ -1,3 +1,11 @@
+x-jwt-server-front-back-subnet: &jwt-server-front-back-subnet "${JWT_SERVER_FRONT_BACK_SUBNET_PREFIX:-172.121}.0.0/24"
+x-jwt-server-back-db-subnet: &jwt-server-back-db-subnet "${JWT_SERVER_BACK_DB_SUBNET_PREFIX:-172.122}.0.0/24"
+x-jwt-server-db-replication-subnet: &jwt-server-db-replication-subnet "${JWT_SERVER_DB_REPLICATION_SUBNET_PREFIX:-172.123}.0.0/24"
+x-jwt-server-back-ajp-ip: &jwt-server-back-ajp-ip "${JWT_SERVER_FRONT_BACK_SUBNET_PREFIX:-172.121}.0.10"
+x-jwt-server2-back-ajp-ip: &jwt-server2-back-ajp-ip "${JWT_SERVER_FRONT_BACK_SUBNET_PREFIX:-172.121}.0.11"
+x-jwt-server-back-db-ip: &jwt-server-back-db-ip "${JWT_SERVER_BACK_DB_SUBNET_PREFIX:-172.122}.0.10"
+x-jwt-server2-back-db-ip: &jwt-server2-back-db-ip "${JWT_SERVER_BACK_DB_SUBNET_PREFIX:-172.122}.0.11"
+
 services:
   ### for Keycloak 20 or later
   keycloak:
@@ -76,8 +84,8 @@ services:
     container_name: gfarm-jwt-server-back
     command: ["tomcat"]
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://jwt-server-db:3306/gfarmdb
-      - AJP_BIND_ADDRESS=172.21.0.10
+      SPRING_DATASOURCE_URL: jdbc:mysql://jwt-server-db:3306/gfarmdb
+      AJP_BIND_ADDRESS: *jwt-server-back-ajp-ip
     volumes:
       - ../minica/minica.pem:/usr/share/pki/ca-trust-source/anchors/minica.crt
       - ./jwt-server:/jwt:ro
@@ -87,11 +95,11 @@ services:
     networks:
       gfarm_net:
       jwt-server-front-back:
-        ipv4_address: 172.21.0.10
+        ipv4_address: *jwt-server-back-ajp-ip
         aliases:
           - jwt-server-back-ajp
       jwt-server-back-db:
-        ipv4_address: 172.22.0.10
+        ipv4_address: *jwt-server-back-db-ip
   jwt-server-db:
     image: gfarm-jwt-server:local
     hostname: jwt-server-db
@@ -135,8 +143,8 @@ services:
     container_name: gfarm-jwt-server2-back
     command: ["tomcat"]
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://jwt-server2-db:3306/gfarmdb
-      - AJP_BIND_ADDRESS=172.21.0.11
+      SPRING_DATASOURCE_URL: jdbc:mysql://jwt-server2-db:3306/gfarmdb
+      AJP_BIND_ADDRESS: *jwt-server2-back-ajp-ip
     volumes:
       - ../minica/minica.pem:/usr/share/pki/ca-trust-source/anchors/minica.crt
       - ./jwt-server:/jwt:ro
@@ -146,11 +154,11 @@ services:
     networks:
       gfarm_net:
       jwt-server-front-back:
-        ipv4_address: 172.21.0.11
+        ipv4_address: *jwt-server2-back-ajp-ip
         aliases:
           - jwt-server2-back-ajp
       jwt-server-back-db:
-        ipv4_address: 172.22.0.11
+        ipv4_address: *jwt-server2-back-db-ip
   jwt-server2-db:
     image: gfarm-jwt-server:local
     hostname: jwt-server2-db
@@ -200,17 +208,17 @@ networks:
     internal: true
     ipam:
       config:
-        - subnet: 172.21.0.0/24
+        - subnet: *jwt-server-front-back-subnet
   jwt-server-back-db:
     internal: true
     ipam:
       config:
-        - subnet: 172.22.0.0/24
+        - subnet: *jwt-server-back-db-subnet
   jwt-server-db-replication:
     internal: true
     ipam:
       config:
-        - subnet: 172.23.0.0/24
+        - subnet: *jwt-server-db-replication-subnet
 
 volumes:
   keycloak-data:
