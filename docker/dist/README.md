@@ -147,7 +147,7 @@ Run once on first setup with empty database volumes:
     % cd ..
 
 - `make init`: initializes both databases and Keycloak.
-- Keycloak client: registers the Compose Gateway HTTP and HTTPS redirect URIs from `setup-keycloak/keycloak-config.yaml`.
+- Keycloak client: registers the `http-gw` HTTP and HTTPS redirect URIs from `setup-keycloak/keycloak-config.yaml`.
 - `make setup` is retired; batch tests initialize the JWT Server stack with `make init`.
 - Later startup: `docker compose up -d` starts all initialized services.
 

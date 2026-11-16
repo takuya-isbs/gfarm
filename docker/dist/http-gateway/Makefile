@@ -10,7 +10,7 @@ export GFARM_HTTP_WEBUI_CASE
 
 help:
 	@echo "make setup  - replace Gfarm CA certs from gfarm-c1"
-	@echo "make up     - create minica certs, rebuild Gateway, and start the stack"
+	@echo "make up     - create minica certs, rebuild http-gw, and start the stack"
 	@echo "make up-nobuild - like up, but without build; run 'make bake-images' in docker/dist first"
 	@echo "make ps     - show the running services"
 	@echo "make logs   - show recent service logs"
@@ -38,15 +38,15 @@ setup:
 
 up:
 	cd .. && sh ./minica.sh
-	$(COMPOSE) up -d --build --force-recreate gateway nginx
+	$(COMPOSE) up -d --build --force-recreate http-gw nginx
 
-# Same as up, but does not build: uses an existing gateway image. Used by GitHub Actions,
+# Same as up, but does not build: uses an existing http-gw image. Used by GitHub Actions,
 # which builds the image with docker/bake-action first. Locally, use `make up` unless you
 # have already built the image (for example, with `make bake-images` in docker/dist).
 # Compose fails if the image is missing, because --no-build does not build it.
 up-nobuild:
 	cd .. && sh ./minica.sh
-	$(COMPOSE) up -d --no-build --force-recreate gateway nginx
+	$(COMPOSE) up -d --no-build --force-recreate http-gw nginx
 
 ps:
 	$(COMPOSE) ps

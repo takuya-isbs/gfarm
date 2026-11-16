@@ -14,7 +14,7 @@ down:
 # Purpose: manual verification and a memo of the build steps. This performs the same build
 # as the docker/bake-action step in gfarm-http-gateway/.github/workflows/test.yaml, but
 # GitHub Actions does not call this target. For local runs, compose alone is enough
-# (for example, `make up` in http-gateway builds the gateway image).
+# (for example, `make up` in http-gateway builds the http-gw image).
 #
 # Keep the bake definitions in sync with the compose files: image names (tags), build
 # contexts, and build args must match docker-compose.yaml and jwt-server/docker-compose.yaml.

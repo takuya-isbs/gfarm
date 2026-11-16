@@ -4,7 +4,7 @@ set -eu
 
 UPDATE="${1:-}"
 
-HOSTS="keycloak jwt-server jwt-server2 gfarm-http-gateway-https"
+HOSTS="keycloak jwt-server jwt-server2 http-gw-https"
 
 cd minica
 

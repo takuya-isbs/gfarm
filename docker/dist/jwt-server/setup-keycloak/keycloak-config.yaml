@@ -12,6 +12,6 @@ jwt_server_urls:
   - https://jwt-server2/*
   - http://jwt-server2/*
 gateway_urls:
-  - http://gfarm-http-gateway-http:8000/*
-  - https://gfarm-http-gateway-https/*
+  - http://http-gw:8000/*
+  - https://http-gw-https/*
 verify_cert: true
