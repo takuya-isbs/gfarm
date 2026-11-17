@@ -48,6 +48,8 @@ Squid is the forward proxy for browsers outside the Docker environment; configur
 
 `make test` runs against the already-running Compose `http-gw` and the `docker/dist` Gfarm, Keycloak, and JWT Server services. It does not recreate them.
 
+This directory keeps the settings that follow docker/dist: Compose operations, certificates, container and network names, service URLs, and paths inside the docker/dist checkout. The test runner and test targets live in the `gfarm-http-gateway` checkout and are included here. Changes to the gateway implementation or its test cases can then stay in that checkout; changes to the docker/dist layout are adapted here.
+
 To run one case, copy its exact title from `make list-webui-cases`:
 
 ```sh
@@ -58,18 +60,20 @@ GFARM_HTTP_TEST_PASSWORD=... make test-webui \
 | Variable | Purpose | Defined in |
 |---|---|---|
 | `GFARM_HTTP_TEST_PASSWORD` | Keycloak `user1` password (required). Not kept in this README; see [For OAuth authentication](../README.md#for-oauth-authentication) and `../init-jwt.sh`. | Environment only |
-| `DOCKER_DIST_USER` | c1 user that runs `jwt-agent` (same as the `login` target) | `Makefile` |
-| `DOCKER_DIST_CLIENT` | Container that runs the Gfarm client and `jwt-agent` | `Makefile` |
-| `GFARM_HTTP_GATEWAY_DIR` | Path to the `gfarm-http-gateway` checkout | `Makefile` |
-| `GFARM_HTTP_PLAYWRIGHT_CACHE_HOME` | Host cache home; the runner uses its `gfarm-http-gateway/playwright` subdirectory. Defaults to `$XDG_CACHE_HOME` or `$HOME/.cache` | `Makefile` and test script |
-| `GFARM_HTTP_TEST_USERNAME` | Expected Gfarm username | Test script |
-| `GFARM_HTTP_GATEWAY_URL` | `http-gw` under test | Test script |
+| `DOCKER_DIST_USER` | c1 user that runs `jwt-agent` (same as the `login` target) | Gfarm `docker/dist/http-gateway/Makefile` |
+| `DOCKER_DIST_CLIENT` | Container that runs the Gfarm client and `jwt-agent` | Gfarm `docker/dist/http-gateway/Makefile` |
+| `DOCKER_DIST_NETWORK` | Compose network used by the Playwright container | Gfarm `docker/dist/http-gateway/Makefile` |
+| `DOCKER_DIST_CHECKOUT_ROOT` | docker/dist checkout path inside the client container | Gfarm `docker/dist/http-gateway/Makefile` |
+| `DOCKER_DIST_WORKDIR` | docker/dist working directory inside the client container | Gfarm `docker/dist/http-gateway/Makefile` |
+| `GFARM_HTTP_GATEWAY_DIR` | Path to the `gfarm-http-gateway` checkout | Gfarm `docker/dist/http-gateway/Makefile` |
+| `GFARM_HTTP_GATEWAY_URL` | Gateway URL reachable from docker/dist and Playwright containers | Gfarm `docker/dist/http-gateway/Makefile` |
+| `GFARM_HTTP_PLAYWRIGHT_CACHE_HOME` | Host cache home; the runner uses its `gfarm-http-gateway/playwright` subdirectory. Defaults to `$XDG_CACHE_HOME` or `$HOME/.cache` | `gfarm-http-gateway/server/e2e-test/docker-dist.mk` and runner script |
+| `GFARM_HTTP_TEST_USERNAME` | Expected Gfarm username | Gfarm `docker/dist/http-gateway/Makefile` |
 | `GFARM_HTTP_WEBUI_CASE` | Exact Playwright title selected by `make test-webui` | Make command line |
-| `DOCKER_DIST_NETWORK` | Docker network for the Playwright containers | Test script |
-| `JWT_SERVER_URL` | JWT Server login page and `jwt-agent` server URL | Test script |
+| `JWT_SERVER_URL` | JWT Server login page and `jwt-agent` server URL | Gfarm `docker/dist/http-gateway/Makefile` |
 | `PLAYWRIGHT_DOCKER_IMAGE` | Playwright container image; must match `@playwright/test` in `package-lock.json` | Test script |
 
-Defaults are not repeated here. Change them in the `Makefile` or at the top of `server/bin/test-http-gateway-docker-dist.sh` in the `gfarm-http-gateway` checkout. Environment variables override both.
+docker/dist-specific defaults are in this directory's `Makefile`. Test implementation, target behavior, Playwright image pin, and cache behavior are in `gfarm-http-gateway/server/e2e-test/`. Environment variables can override the Makefile defaults.
 
 Authentication effects on the c1 account:
 
@@ -93,7 +97,7 @@ Test preparation:
 - Cache cleanup: Old dependency versions remain until `make clean-test-cache` removes the cache.
 - CLI helper: Rebuilt for each invocation.
 
-Both test commands use a unique Gfarm `/tmp` directory and remove it on exit. See `gfarm-http-gateway/server/bin/test-http-gateway-docker-dist.sh` for setup and orchestration, and `client/test/gfarm-http-test.sh` and `server/frontend/app/react-app/tests/docker-dist.operations.spec.js` for case details.
+Both test commands use a unique Gfarm `/tmp` directory and remove it on exit. See `gfarm-http-gateway/server/e2e-test/test-http-gateway-docker-dist.sh` for setup and orchestration, and `client/test/gfarm-http-test.sh` and `server/frontend/app/react-app/tests/docker-dist.operations.spec.js` for case details.
 
 ## Run the source development server on c2
 

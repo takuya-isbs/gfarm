@@ -1,12 +1,19 @@
 COMPOSE = docker compose --env-file .env -f docker-compose.yaml
-DOCKER_DIST_USER ?= $(USER)
 GFARM_HTTP_GATEWAY_DIR ?= ../../../gfarm-http-gateway
+DOCKER_DIST_USER ?= $(USER)
 DOCKER_DIST_CLIENT ?= gfarm-c1
-GFARM_HTTP_PLAYWRIGHT_CACHE_HOME ?= $(if $(XDG_CACHE_HOME),$(XDG_CACHE_HOME),$(HOME)/.cache)
+DOCKER_DIST_NETWORK ?= gfarm_net
+DOCKER_DIST_CHECKOUT_ROOT ?= /home/$(USER)/gfarm
+DOCKER_DIST_WORKDIR ?= $(DOCKER_DIST_CHECKOUT_ROOT)/docker/dist
+GFARM_HTTP_GATEWAY_URL ?= http://http-gw:8000
+GFARM_HTTP_TEST_USERNAME ?= user1
+JWT_SERVER_URL ?= https://jwt-server/
 
-.PHONY: help setup up up-nobuild ps logs follow test list-webui-cases test-webui clean-test-cache down
+.PHONY: help setup up up-nobuild ps logs follow down
 
-export GFARM_HTTP_WEBUI_CASE
+export DOCKER_DIST_USER DOCKER_DIST_CLIENT DOCKER_DIST_NETWORK
+export DOCKER_DIST_CHECKOUT_ROOT DOCKER_DIST_WORKDIR
+export GFARM_HTTP_GATEWAY_URL GFARM_HTTP_TEST_USERNAME JWT_SERVER_URL
 
 help:
 	@echo "make setup  - replace Gfarm CA certs from gfarm-c1"
@@ -15,11 +22,8 @@ help:
 	@echo "make ps     - show the running services"
 	@echo "make logs   - show recent service logs"
 	@echo "make follow - follow service logs"
-	@echo "make test   - run the gfarm-http-gateway integration test"
-	@echo "make list-webui-cases - list real-Gfarm Playwright case titles"
-	@echo "make test-webui GFARM_HTTP_WEBUI_CASE='title' - run one Web UI case"
-	@echo "make clean-test-cache - remove cached Playwright dependencies"
 	@echo "make down   - stop the stack"
+	@$(MAKE) --no-print-directory help-integration-test
 
 setup:
 	@set -eu; \
@@ -57,17 +61,9 @@ logs:
 follow:
 	$(COMPOSE) logs -f
 
-test:
-	GFARM_HTTP_PLAYWRIGHT_CACHE_HOME="$(GFARM_HTTP_PLAYWRIGHT_CACHE_HOME)" DOCKER_DIST_USER="$(DOCKER_DIST_USER)" DOCKER_DIST_CLIENT="$(DOCKER_DIST_CLIENT)" "$(GFARM_HTTP_GATEWAY_DIR)/server/bin/test-http-gateway-docker-dist.sh"
-
-list-webui-cases:
-	"$(GFARM_HTTP_GATEWAY_DIR)/server/bin/test-http-gateway-docker-dist.sh" --list-webui-cases
-
-test-webui:
-	GFARM_HTTP_PLAYWRIGHT_CACHE_HOME="$(GFARM_HTTP_PLAYWRIGHT_CACHE_HOME)" DOCKER_DIST_USER="$(DOCKER_DIST_USER)" DOCKER_DIST_CLIENT="$(DOCKER_DIST_CLIENT)" "$(GFARM_HTTP_GATEWAY_DIR)/server/bin/test-http-gateway-docker-dist.sh" --webui-case
-
-clean-test-cache:
-	GFARM_HTTP_PLAYWRIGHT_CACHE_HOME="$(GFARM_HTTP_PLAYWRIGHT_CACHE_HOME)" "$(GFARM_HTTP_GATEWAY_DIR)/server/bin/test-http-gateway-docker-dist.sh" --clean-cache
-
 down:
 	$(COMPOSE) down
+
+# Keep docker/dist-specific service and connection settings here. The gateway
+# checkout owns the integration test runner and its Make targets.
+include $(GFARM_HTTP_GATEWAY_DIR)/server/e2e-test/docker-dist.mk
