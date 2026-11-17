@@ -12,7 +12,7 @@
 #
 # Run bake from the gfarm repository root. Relative context paths are resolved from the
 # current working directory, not from this file's location.
-#   docker buildx bake -f docker/dist/docker-bake.hcl -f docker/dist/http-gateway/docker-bake.hcl gfarm gateway
+#   docker buildx bake -f docker/dist/docker-bake.hcl -f gfarm-http-gateway/server/e2e-test/docker-dist/docker-bake.hcl gfarm http-gw
 # The gfarm group builds: minica, gfarm-ubuntu, jwt-server-back, setup-keycloak.
 #
 # Requirements:

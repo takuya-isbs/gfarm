@@ -13,5 +13,7 @@ jwt_server_urls:
   - http://jwt-server2/*
 gateway_urls:
   - http://http-gw:8000/*
+  - http://http-gw-python3-11:8000/*
+  - http://http-gw-python3-15:8000/*
   - https://http-gw-https/*
 verify_cert: true

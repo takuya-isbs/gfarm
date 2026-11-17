@@ -1,5 +1,9 @@
-COMPOSE = docker compose --env-file .env -f docker-compose.yaml
 GFARM_HTTP_GATEWAY_DIR ?= ../../../gfarm-http-gateway
+GFARM_HTTP_GATEWAY_CONTEXT ?= $(abspath $(GFARM_HTTP_GATEWAY_DIR)/server)
+GFARM_HTTP_GATEWAY_CONFIG_DIR ?= $(GFARM_HTTP_GATEWAY_CONTEXT)
+GFARM_HTTP_GATEWAY_E2E_CONFIG_DIR ?= $(abspath $(GFARM_HTTP_GATEWAY_DIR)/server/e2e-test/docker-dist)
+DOCKER_DIST_CERT_DIR ?= $(abspath config/certs)
+DOCKER_DIST_HTTPS_CERT_DIR ?= $(abspath ../minica/http-gw-https)
 DOCKER_DIST_USER ?= $(USER)
 DOCKER_DIST_CLIENT ?= gfarm-c1
 DOCKER_DIST_NETWORK ?= gfarm_net
@@ -11,6 +15,8 @@ JWT_SERVER_URL ?= https://jwt-server/
 
 .PHONY: help setup up up-nobuild ps logs follow down
 
+export GFARM_HTTP_GATEWAY_CONTEXT GFARM_HTTP_GATEWAY_CONFIG_DIR GFARM_HTTP_GATEWAY_E2E_CONFIG_DIR
+export DOCKER_DIST_CERT_DIR DOCKER_DIST_HTTPS_CERT_DIR
 export DOCKER_DIST_USER DOCKER_DIST_CLIENT DOCKER_DIST_NETWORK
 export DOCKER_DIST_CHECKOUT_ROOT DOCKER_DIST_WORKDIR
 export GFARM_HTTP_GATEWAY_URL GFARM_HTTP_TEST_USERNAME JWT_SERVER_URL
@@ -42,7 +48,7 @@ setup:
 
 up:
 	cd .. && sh ./minica.sh
-	$(COMPOSE) up -d --build --force-recreate http-gw nginx
+	$(MAKE) compose-up
 
 # Same as up, but does not build: uses an existing http-gw image. Used by GitHub Actions,
 # which builds the image with docker/bake-action first. Locally, use `make up` unless you
@@ -50,7 +56,7 @@ up:
 # Compose fails if the image is missing, because --no-build does not build it.
 up-nobuild:
 	cd .. && sh ./minica.sh
-	$(COMPOSE) up -d --no-build --force-recreate http-gw nginx
+	$(MAKE) compose-up-nobuild
 
 ps:
 	$(COMPOSE) ps
@@ -64,6 +70,6 @@ follow:
 down:
 	$(COMPOSE) down
 
-# Keep docker/dist-specific service and connection settings here. The gateway
-# checkout owns the integration test runner and its Make targets.
+# Keep docker/dist-specific service and connection settings here. The
+# gfarm-http-gateway checkout owns the integration test runner and its Make targets.
 include $(GFARM_HTTP_GATEWAY_DIR)/server/e2e-test/docker-dist.mk

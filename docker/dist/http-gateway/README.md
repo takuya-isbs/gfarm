@@ -6,9 +6,9 @@ Set up the Gfarm virtual cluster by following [Explore on virtual clusters](../R
 
 ## Run with Docker Compose
 
-Use this setup to verify the built `http-gw` image and HTTP/HTTPS access. One Compose project starts `http-gw`, Redis, and Nginx. The source remains in the `gfarm-http-gateway` checkout; `.env` sets its Docker build context.
+Use this setup to verify `gfarm-http-gateway` against the docker/dist Gfarm environment. The Compose file and http-gw image build definition are maintained in `gfarm-http-gateway/server/e2e-test/docker-dist/`; this directory supplies the Gfarm network and host paths.
 
-Run this directory's Compose Makefile commands on the Docker host, from this directory. The fixed `.env` settings and Redis password are for this isolated docker/dist test only. Redis is authenticated, private to the Compose network, and has no published host port. This Compose does not modify `jwt-server`.
+Run this directory's Make targets on the Docker host. `.env` contains the Redis password for this isolated test. The Makefile sets the external Gfarm network name and passes the checkout and certificate paths to Compose. Redis is authenticated, private to its Compose network, and has no published host port. These targets do not modify `jwt-server`.
 
 After `docker/dist/all.sh` has initialized Gfarm in c1, `make setup` copies its CA certificates to `config/certs/` for `http-gw`. If this Compose project is running, stop it first with `make down`:
 
@@ -17,7 +17,7 @@ make down
 make setup
 ```
 
-Then run `make up` to start `http-gw`, which copies the certificates into its Gfarm trust directory.
+Then run `make up` to build and start both Python http-gw services, Redis, and Nginx. `http-gw` uses Python 3.15; `http-gw-python3-15` is an alias for that same service, and `http-gw-python3-11` reaches the Python 3.11 service.
 
 For HTTPS, trust `docker/dist/minica/minica.pem` in the browser. See the CA setup instructions in `docker/dist/README.md`.
 
@@ -35,8 +35,8 @@ Squid is the forward proxy for browsers outside the Docker environment; configur
 | Command | Action |
 |---|---|
 | `make setup` | Copy the Gfarm CA certificates from c1 for the `http-gw` container |
-| `make up` | Build and start `http-gw`, Redis, and Nginx |
-| `make up-nobuild` | Start the same services without building; the `http-gw` image must already exist (GitHub Actions uses this after bake) |
+| `make up` | Build and start Python 3.11/3.15 http-gw services, Redis, and Nginx |
+| `make up-nobuild` | Start those services without building; both http-gw images must already exist |
 | `make -C .. bake-images` | Build all docker/dist images with bake from the gfarm root (manual check only; GitHub Actions does not call it) |
 | `make ps` | Show service status |
 | `make logs` | Show the last 100 log lines |
@@ -51,9 +51,9 @@ Start the Compose project and the docker/dist Gfarm, Keycloak, and JWT Server se
 GFARM_HTTP_TEST_PASSWORD=... make test-e2e
 ```
 
-The test runner, case selection, cache, and authentication behavior are documented in the `gfarm-http-gateway` checkout's root README under “Test against a real Gfarm.”
+The `gfarm-http-gateway` checkout's root README documents the runner and test cases under “Test against a real Gfarm” (this README keeps test instructions to docker/dist setup and entry points).
 
-This directory owns the Compose and docker/dist-specific settings. The `gfarm-http-gateway` checkout owns the integration test runner and its behavior; this Makefile includes its test targets while preserving the command entry point.
+The `gfarm-http-gateway` checkout owns Compose services, image builds, and test behavior. This directory supplies docker/dist-specific settings and keeps the `make test-e2e` entry point.
 
 ### docker/dist test settings
 
@@ -68,7 +68,7 @@ These settings adapt the test runner to the docker/dist layout. Defaults are in 
 | `DOCKER_DIST_CHECKOUT_ROOT` | docker/dist checkout path inside the client container |
 | `DOCKER_DIST_WORKDIR` | docker/dist working directory inside the client container |
 | `GFARM_HTTP_GATEWAY_DIR` | Path to the `gfarm-http-gateway` checkout |
-| `GFARM_HTTP_GATEWAY_URL` | Gateway URL reachable from docker/dist and test containers |
+| `GFARM_HTTP_GATEWAY_URL` | `http-gw` URL reachable from docker/dist and test containers |
 | `JWT_SERVER_URL` | JWT Server URL used by the test login and `jwt-agent` |
 
 ## Run the source development server on c2
